@@ -1,69 +1,215 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { 
+  Navbar, 
+  DashboardHeader, 
+  AiSummaryShortcutCard, 
+  SearchFilterBar, 
+  RecentNotesFeed, 
+  AiSummaryModal, 
+  NoteDetailModal,
+  MyPurchasesView,
+  AiAssistantView 
+} from '@/components';
+import { MOCK_NOTES } from '@/data/mockNotes';
+import { NoteItem } from '@/types/lms';
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<string>('Dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('All Subjects');
+  const [sortBy, setSortBy] = useState('recent');
+  const [freeOnly, setFreeOnly] = useState(false);
+
+  // Modals state
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [activeAiNote, setActiveAiNote] = useState<NoteItem | null>(null);
+  const [activeDetailNote, setActiveDetailNote] = useState<NoteItem | null>(null);
+
+  // Filter and sort notes
+  const filteredNotes = useMemo(() => {
+    let result = [...MOCK_NOTES];
+
+    // Subject Filter
+    if (selectedSubject !== 'All Subjects') {
+      result = result.filter((n) => n.subject === selectedSubject);
+    }
+
+    // Free Only Filter
+    if (freeOnly) {
+      result = result.filter((n) => n.price === 0 || n.isPurchased);
+    }
+
+    // Search Query Filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (n) =>
+          n.title.toLowerCase().includes(q) ||
+          n.subject.toLowerCase().includes(q) ||
+          n.subjectCode.toLowerCase().includes(q) ||
+          n.professor.toLowerCase().includes(q) ||
+          n.tags.some((t) => t.toLowerCase().includes(q)) ||
+          n.previewSnippet.toLowerCase().includes(q)
+      );
+    }
+
+    // Sorting
+    if (sortBy === 'rating') {
+      result.sort((a, b) => b.rating - a.rating);
+    } else if (sortBy === 'downloads') {
+      result.sort((a, b) => b.downloads - a.downloads);
+    } else if (sortBy === 'pages') {
+      result.sort((a, b) => b.pageCount - a.pageCount);
+    }
+
+    return result;
+  }, [searchQuery, selectedSubject, sortBy, freeOnly]);
+
+  const handleOpenAiSummary = (note?: NoteItem) => {
+    if (note) {
+      setActiveAiNote(note);
+    } else {
+      setActiveAiNote(MOCK_NOTES[0]);
+    }
+    setIsAiModalOpen(true);
+  };
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedSubject('All Subjects');
+    setFreeOnly(false);
+    setSortBy('recent');
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col font-sans selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* Responsive Navigation Bar */}
+      <Navbar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOpenAiSummary={() => handleOpenAiSummary()}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+        {/* TAB 1: DASHBOARD */}
+        {activeTab === 'Dashboard' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            {/* Student Dashboard Header & Overview */}
+            <DashboardHeader
+              studentName="Rohan Khadke"
+              department="Department of Computer Science & Engineering"
+              semester="Semester 6 • 2026 Academic Session"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+
+            {/* AI Note-Summary Shortcut Card */}
+            <AiSummaryShortcutCard
+              onOpenSummary={() => handleOpenAiSummary()}
+            />
+
+            {/* Quick Search & Subject Filter Bar */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#090D16] border border-slate-800 shadow-md">
+              <SearchFilterBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                selectedSubject={selectedSubject}
+                onSubjectChange={setSelectedSubject}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                freeOnly={freeOnly}
+                onToggleFreeOnly={() => setFreeOnly(!freeOnly)}
+                totalResults={filteredNotes.length}
+              />
+            </div>
+
+            {/* Recent Notes Feed */}
+            <RecentNotesFeed
+              notes={filteredNotes}
+              onOpenAiSummary={handleOpenAiSummary}
+              onSelectNote={setActiveDetailNote}
+              onResetFilters={handleResetFilters}
+            />
+          </div>
+        )}
+
+        {/* TAB 2: CLASS NOTES */}
+        {activeTab === 'Class Notes' && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="pb-3 border-b border-slate-800">
+              <h2 className="text-2xl font-bold text-white tracking-tight">
+                Class Notes & Lecture Repository
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Browse, search, and download peer-verified notes from course faculty.
+              </p>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#0F172A] border border-slate-800">
+              <SearchFilterBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                selectedSubject={selectedSubject}
+                onSubjectChange={setSelectedSubject}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                freeOnly={freeOnly}
+                onToggleFreeOnly={() => setFreeOnly(!freeOnly)}
+                totalResults={filteredNotes.length}
+              />
+            </div>
+
+            <RecentNotesFeed
+              notes={filteredNotes}
+              onOpenAiSummary={handleOpenAiSummary}
+              onSelectNote={setActiveDetailNote}
+              onResetFilters={handleResetFilters}
+            />
+          </div>
+        )}
+
+        {/* TAB 3: AI STUDY ASSISTANT */}
+        {activeTab === 'AI Study Assistant' && (
+          <AiAssistantView />
+        )}
+
+        {/* TAB 4: MY PURCHASES */}
+        {activeTab === 'My Purchases' && (
+          <MyPurchasesView
+            onOpenAiSummary={handleOpenAiSummary}
+            onExploreNotes={() => setActiveTab('Class Notes')}
+          />
+        )}
       </main>
+
+      {/* AI Summary Modal */}
+      <AiSummaryModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        selectedNote={activeAiNote}
+      />
+
+      {/* Note Detail / Reader Modal */}
+      <NoteDetailModal
+        note={activeDetailNote}
+        onClose={() => setActiveDetailNote(null)}
+        onOpenAiSummary={handleOpenAiSummary}
+      />
+
+      {/* Footer */}
+      <footer className="mt-auto border-t border-slate-800/80 bg-[#090D16] py-6 text-center text-xs text-slate-500 font-mono">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <span>CampusLMS Platform • Higher Education Academic OS</span>
+          <div className="flex items-center gap-4 text-slate-400">
+            <span>Supabase Ready</span>
+            <span>•</span>
+            <span>Next.js 16 App Router</span>
+            <span>•</span>
+            <span>Tailwind CSS</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
